@@ -10,33 +10,37 @@ import Link from "next/link"
 export function Header() {
   const { user, signOut, isAdmin } = useAuth()
 
-  return (
-    <header className="bg-white border-b px-6 py-4">
-      <div className="flex items-center justify-between">
-        <Link href="/dashboard" className="text-2xl font-bold text-gray-900">
-          VARS BILL POS
-        </Link>
+  if (!user) return null
 
-        <div className="flex items-center gap-4">
-          {user ? (
+  const initials = user.email?.charAt(0).toUpperCase() || "U"
+
+  return (
+    <header className="bg-white shadow-sm border-b">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          <div className="flex items-center">
+            <Link href="/dashboard" className="text-xl font-bold text-gray-900">
+              VARS BILL POS
+            </Link>
+          </div>
+
+          <div className="flex items-center space-x-4">
+            <span className="text-sm text-gray-600">Welcome, {user.user_metadata?.name || user.email}</span>
+
+            {isAdmin && <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">Admin</span>}
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                   <Avatar className="h-8 w-8">
-                    <AvatarFallback>{user.email?.charAt(0).toUpperCase() || "U"}</AvatarFallback>
+                    <AvatarFallback>{initials}</AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end" forceMount>
-                <div className="flex items-center justify-start gap-2 p-2">
-                  <div className="flex flex-col space-y-1 leading-none">
-                    <p className="font-medium">{user.email}</p>
-                    {isAdmin && <p className="w-[200px] truncate text-sm text-muted-foreground">Administrator</p>}
-                  </div>
-                </div>
                 <DropdownMenuItem>
                   <User className="mr-2 h-4 w-4" />
-                  <span>Profile</span>
+                  <span>{user.email}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
                   <Settings className="mr-2 h-4 w-4" />
@@ -48,11 +52,7 @@ export function Header() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          ) : (
-            <Link href="/login">
-              <Button>Login</Button>
-            </Link>
-          )}
+          </div>
         </div>
       </div>
     </header>

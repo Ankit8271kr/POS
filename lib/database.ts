@@ -1,9 +1,9 @@
 import { createClient } from "@supabase/supabase-js"
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(supabaseUrl, supabaseKey)
 
 export interface Product {
   id: number
@@ -47,7 +47,6 @@ export interface OrderItem {
 }
 
 class Database {
-  // Product methods
   async getProducts(): Promise<Product[]> {
     const { data, error } = await supabase.from("products").select("*").eq("is_active", true).order("name")
 
@@ -87,14 +86,6 @@ class Database {
     if (error) throw error
   }
 
-  // Order methods
-  async getOrders(): Promise<Order[]> {
-    const { data, error } = await supabase.from("orders").select("*").order("created_at", { ascending: false })
-
-    if (error) throw error
-    return data || []
-  }
-
   async createOrder(order: Omit<Order, "id" | "created_at" | "updated_at">): Promise<Order> {
     const { data, error } = await supabase.from("orders").insert([order]).select().single()
 
@@ -102,8 +93,8 @@ class Database {
     return data
   }
 
-  async getOrderItems(orderId: number): Promise<OrderItem[]> {
-    const { data, error } = await supabase.from("order_items").select("*").eq("order_id", orderId)
+  async getOrders(): Promise<Order[]> {
+    const { data, error } = await supabase.from("orders").select("*").order("created_at", { ascending: false })
 
     if (error) throw error
     return data || []
@@ -116,29 +107,11 @@ class Database {
     return data || []
   }
 
-  // Analytics methods
-  async getDailySales(date: string): Promise<number> {
-    const { data, error } = await supabase
-      .from("orders")
-      .select("total_amount")
-      .gte("created_at", `${date}T00:00:00`)
-      .lt("created_at", `${date}T23:59:59`)
-      .eq("payment_status", "completed")
+  async getOrderItems(orderId: number): Promise<OrderItem[]> {
+    const { data, error } = await supabase.from("order_items").select("*").eq("order_id", orderId)
 
     if (error) throw error
-
-    return data?.reduce((sum, order) => sum + order.total_amount, 0) || 0
-  }
-
-  async getOrderCount(date: string): Promise<number> {
-    const { data, error } = await supabase
-      .from("orders")
-      .select("id", { count: "exact" })
-      .gte("created_at", `${date}T00:00:00`)
-      .lt("created_at", `${date}T23:59:59`)
-
-    if (error) throw error
-    return data?.length || 0
+    return data || []
   }
 }
 

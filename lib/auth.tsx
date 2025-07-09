@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { createContext, useContext, useEffect, useState } from "react"
-import { supabase } from "@/lib/database"
+import { supabase } from "./database"
 import type { User } from "@supabase/supabase-js"
 
 interface AuthContextType {
@@ -19,9 +19,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
-
-  // Check if user is admin (you can modify this logic based on your needs)
-  const isAdmin = user?.email === "admin@varsbill.com" || user?.user_metadata?.role === "admin"
 
   useEffect(() => {
     // Get initial session
@@ -52,6 +49,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     await supabase.auth.signOut()
   }
+
+  // Check if user is admin based on email or metadata
+  const isAdmin =
+    user?.email === "admin@varsbill.com" ||
+    user?.user_metadata?.role === "admin" ||
+    user?.app_metadata?.role === "admin"
 
   const value = {
     user,

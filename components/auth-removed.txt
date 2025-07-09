@@ -1,0 +1,10 @@
+Authentication system has been removed for simplicity.
+The following files are no longer needed:
+- lib/auth.tsx
+- components/login-form.tsx
+- components/protected-route.tsx
+- components/header.tsx (auth version)
+- app/login/page.tsx
+- scripts/setup-admin.ts
+
+The system now works without authentication and provides direct access to all features.

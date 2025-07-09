@@ -1,8 +1,19 @@
 import { createClient } from "@supabase/supabase-js"
 
-// Use environment variables or provide them directly
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "your-supabase-url"
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "your-service-role-key"
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error("❌ Missing required environment variables:")
+  console.error("   - NEXT_PUBLIC_SUPABASE_URL")
+  console.error("   - SUPABASE_SERVICE_ROLE_KEY")
+  console.log("\n💡 Get these from your Supabase project dashboard:")
+  console.log("   1. Go to https://supabase.com/dashboard")
+  console.log("   2. Select your project")
+  console.log("   3. Go to Settings > API")
+  console.log("   4. Copy the URL and service_role key")
+  process.exit(1)
+}
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
@@ -13,102 +24,91 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
 
 async function setupAdmin() {
   try {
-    console.log("Setting up admin user...")
+    console.log("🔐 Setting up admin user...")
 
-    // Create admin user with service role key
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email: "admin@varsbill.com",
-      password: "admin123",
-      email_confirm: true,
-      user_metadata: {
-        role: "admin",
-        name: "Administrator",
-      },
+    const adminEmail = "admin@varsbill.com"
+    const adminPassword = "admin123"
+
+    // First, check if user already exists
+    const { data: existingUsers } = await supabase.auth.admin.listUsers()
+    const existingUser = existingUsers.users.find((user) => user.email === adminEmail)
+
+    if (existingUser) {
+      console.log("👤 Admin user already exists, updating...")
+
+      // Update existing user
+      const { error: updateError } = await supabase.auth.admin.updateUserById(existingUser.id, {
+        password: adminPassword,
+        user_metadata: {
+          role: "admin",
+          name: "Administrator",
+        },
+        app_metadata: {
+          role: "admin",
+        },
+      })
+
+      if (updateError) {
+        throw updateError
+      }
+
+      console.log("✅ Admin user updated successfully")
+    } else {
+      // Create new admin user
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email: adminEmail,
+        password: adminPassword,
+        email_confirm: true,
+        user_metadata: {
+          role: "admin",
+          name: "Administrator",
+        },
+        app_metadata: {
+          role: "admin",
+        },
+      })
+
+      if (authError) {
+        throw authError
+      }
+
+      console.log("✅ Admin user created successfully")
+      console.log(`👤 User ID: ${authData.user.id}`)
+    }
+
+    // Test the login
+    console.log("🧪 Testing admin login...")
+    const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+      email: adminEmail,
+      password: adminPassword,
     })
 
-    if (authError) {
-      console.error("Error creating admin user:", authError)
-
-      // If user already exists, try to update
-      if (authError.message.includes("already registered")) {
-        console.log("Admin user already exists, updating metadata...")
-
-        const { data: users, error: listError } = await supabase.auth.admin.listUsers()
-        if (listError) {
-          console.error("Error listing users:", listError)
-          return
-        }
-
-        const adminUser = users.users.find((user) => user.email === "admin@varsbill.com")
-        if (adminUser) {
-          const { error: updateError } = await supabase.auth.admin.updateUserById(adminUser.id, {
-            user_metadata: {
-              role: "admin",
-              name: "Administrator",
-            },
-          })
-
-          if (updateError) {
-            console.error("Error updating admin user:", updateError)
-          } else {
-            console.log("Admin user metadata updated successfully!")
-          }
-        }
-      }
-      return
+    if (loginError) {
+      console.warn("⚠️  Login test failed:", loginError.message)
+      console.log("This might be normal if email confirmation is required")
+    } else {
+      console.log("✅ Login test successful")
+      await supabase.auth.signOut()
     }
 
-    console.log("✅ Admin user created successfully!")
-    console.log("📧 Email: admin@varsbill.com")
-    console.log("🔑 Password: admin123")
-    console.log("👤 User ID:", authData.user.id)
-
-    // Optionally create a profile record
-    const { error: profileError } = await supabase.from("user_profiles").insert([
-      {
-        id: authData.user.id,
-        email: "admin@varsbill.com",
-        role: "admin",
-        name: "Administrator",
-        created_at: new Date().toISOString(),
-      },
-    ])
-
-    if (profileError && !profileError.message.includes("already exists")) {
-      console.warn("Could not create profile (table might not exist):", profileError.message)
-    }
-
-    console.log("\n🎉 Setup complete! You can now login with:")
-    console.log("   Email: admin@varsbill.com")
-    console.log("   Password: admin123")
+    console.log("\n🎉 Admin setup complete!")
+    console.log("\n📋 Login Credentials:")
+    console.log(`   📧 Email: ${adminEmail}`)
+    console.log(`   🔑 Password: ${adminPassword}`)
+    console.log("\n🚀 Next Steps:")
+    console.log("   1. Start your app: npm run dev")
+    console.log("   2. Visit: http://localhost:3000/login")
+    console.log("   3. Login with the credentials above")
   } catch (error) {
-    console.error("Unexpected error:", error)
+    console.error("❌ Admin setup failed:", error)
+
+    if (error.message?.includes("Invalid API key")) {
+      console.log("\n💡 Make sure you're using the service_role key, not the anon key")
+    }
+
+    process.exit(1)
   }
 }
 
-// Alternative setup for development without service key
-async function setupAdminDev() {
-  console.log("🔧 Development setup - Manual admin creation")
-  console.log("Since we don't have service role key, please:")
-  console.log("1. Go to your Supabase dashboard")
-  console.log("2. Navigate to Authentication > Users")
-  console.log('3. Click "Add user"')
-  console.log("4. Create user with:")
-  console.log("   - Email: admin@varsbill.com")
-  console.log("   - Password: admin123")
-  console.log("   - Confirm email: Yes")
-  console.log('5. In user metadata, add: {"role": "admin"}')
-}
-
-// Check if we have the required environment variables
-if (!supabaseUrl || supabaseUrl === "your-supabase-url") {
-  console.error("❌ NEXT_PUBLIC_SUPABASE_URL environment variable is required")
-  process.exit(1)
-}
-
-if (!supabaseServiceKey || supabaseServiceKey === "your-service-role-key") {
-  console.log("⚠️  SUPABASE_SERVICE_ROLE_KEY not found, using development setup")
-  setupAdminDev()
-} else {
-  setupAdmin()
-}
+// Run the setup
+setupAdmin()
